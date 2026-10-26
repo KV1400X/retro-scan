@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Retro Scan" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#121214" />
+  <meta name="description" content="Photogrammetry capture for small tool parts. Export photos; reconstruct on PC. No LiDAR on iPhone 12 Safari." />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <title>Retro Scan</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Retro Scan</span>
+      </div>
+      <div class="top-actions">
+        <button type="button" class="icon-btn" id="btnTips" title="Tips" aria-label="Capture tips">?</button>
+        <button type="button" class="icon-btn" id="btnHonesty" title="How it works" aria-label="How it works">i</button>
+      </div>
+    </header>
+
+    <div class="honesty" id="honestyBanner">
+      <strong>iPhone 12 — no LiDAR in Safari.</strong>
+      Capture photos here → export ZIP → run COLMAP on your PC. Face ID depth is front-only and not available to web apps.
+      <button type="button" class="icon-btn" id="btnDismissHonesty" style="width:28px;height:28px;font-size:14px;margin-left:6px;display:inline-grid;vertical-align:middle" aria-label="Dismiss">×</button>
+    </div>
+
+    <div class="rings" id="ringBar" role="tablist" aria-label="Orbit height rings">
+      <!-- filled by JS -->
+    </div>
+
+    <main class="stage" id="stage">
+      <video id="preview" playsinline muted autoplay></video>
+      <canvas id="snapCanvas" hidden></canvas>
+      <div class="flash" id="flash"></div>
+      <div class="stage-overlay">
+        <div class="ring-chip" id="ringChip"><span class="dot"></span><span id="ringChipText">Low orbit</span></div>
+        <div class="guide-frame" aria-hidden="true"></div>
+        <div class="progress-row" id="progressRow"></div>
+      </div>
+      <div class="camera-error" id="cameraError">
+        <div>
+          <h2>Camera needed</h2>
+          <p id="cameraErrorMsg">Allow camera access, or open this page over HTTPS in Safari.</p>
+          <button type="button" class="btn-full primary" id="btnRetryCam">Retry camera</button>
+        </div>
+      </div>
+    </main>
+
+    <div class="controls">
+      <div class="side-stack left">
+        <button type="button" class="thumb-btn empty" id="btnGallery" aria-label="Open gallery">
+          <span id="galleryPlaceholder">▣</span>
+          <img id="galleryThumb" alt="" hidden />
+          <span class="badge" id="photoBadge" hidden>0</span>
+        </button>
+        <span class="hint">Gallery</span>
+      </div>
+
+      <button type="button" class="capture-btn" id="btnCapture" aria-label="Capture photo"></button>
+
+      <div class="side-stack right">
+        <button type="button" class="action-chip primary" id="btnExport" disabled>Export</button>
+        <span class="hint">ZIP / Share</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gallery panel -->
+  <div class="panel" id="panelGallery" role="dialog" aria-label="Photo gallery">
+    <div class="panel-header">
+      <button type="button" class="action-chip" id="btnCloseGallery">Close</button>
+      <h2>Gallery</h2>
+      <button type="button" class="action-chip" id="btnClearGallery" style="color:var(--danger)">Clear</button>
+    </div>
+    <div class="panel-body">
+      <div class="gallery-grid" id="galleryGrid"></div>
+      <div class="empty-state" id="galleryEmpty" hidden>No photos yet. Orbit the part and tap the shutter.</div>
+    </div>
+  </div>
+
+  <!-- Tips panel -->
+  <div class="panel" id="panelTips" role="dialog" aria-label="Capture tips">
+    <div class="panel-header">
+      <button type="button" class="action-chip" id="btnCloseTips">Close</button>
+      <h2>Capture tips</h2>
+      <span style="width:64px"></span>
+    </div>
+    <div class="panel-body">
+      <div class="tip-card">
+        <h3>Orbit rings (guided)</h3>
+        <p>Shoot three height bands around the object: <strong style="color:var(--text)">Low</strong>, <strong style="color:var(--text)">Eye</strong>, and <strong style="color:var(--text)">High</strong>. Aim for ~8–12 photos per ring (about 24–36 total) for small detailed parts like tool ports and adapters.</p>
+      </div>
+      <div class="tip-card">
+        <h3>Overlap & framing</h3>
+        <ul>
+          <li>~60% overlap between neighboring shots</li>
+          <li>Keep the object filling most of the frame</li>
+          <li>Hold steady; tap shutter, then move a little</li>
+        </ul>
+      </div>
+      <div class="tip-card">
+        <h3>Setup</h3>
+        <ul>
+          <li>Matte / non-reflective background (paper, cloth)</li>
+          <li>Even diffuse light — avoid hard specular glare</li>
+          <li>Optional: lazy susan / turntable for consistent orbits</li>
+          <li>ArUco markers in view help scale later on PC</li>
+        </ul>
+      </div>
+      <div class="tip-card">
+        <h3>What this app does / doesn’t</h3>
+        <p>Captures high-res stills and exports a ZIP for photogrammetry on your computer (COLMAP / Meshroom). It does <strong style="color:var(--text)">not</strong> build a mesh on-device. iPhone 12 has no rear LiDAR, and TrueDepth is not available to Safari.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export panel -->
+  <div class="panel" id="panelExport" role="dialog" aria-label="Export scan">
+    <div class="panel-header">
+      <button type="button" class="action-chip" id="btnCloseExport">Close</button>
+      <h2>Export</h2>
+      <span style="width:64px"></span>
+    </div>
+    <div class="panel-body">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.4">
+        Packs JPEGs + <code style="color:var(--accent)">scan.json</code> into a ZIP named
+        <code style="color:var(--accent)">scan-YYYYMMDD-HHMM.zip</code>.
+        On iPhone, prefer <strong style="color:var(--text)">Share</strong> (Files / AirDrop) — Safari downloads can be flaky.
+      </p>
+      <label for="notes" style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">Notes (optional)</label>
+      <textarea id="notes" class="notes-field" placeholder="e.g. Festool D27 adapter, matte black, ArUco 50mm"></textarea>
+      <div class="export-status" id="exportStatus"></div>
+      <div class="btn-row">
+        <button type="button" class="btn-full primary" id="btnShare">Share ZIP…</button>
+        <button type="button" class="btn-full secondary" id="btnDownload">Download ZIP</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="vendor/fflate.min.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

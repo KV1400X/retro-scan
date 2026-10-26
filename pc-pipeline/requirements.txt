@@ -1,0 +1,6 @@
+# Optional helpers for Retro Scan PC pipeline.
+# COLMAP and ffmpeg are installed separately (see README).
+numpy>=1.24
+opencv-python-headless>=4.8
+open3d>=0.17; platform_system != "Linux" or python_version < "3.13"
+Pillow>=10.0
