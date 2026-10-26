@@ -269,8 +269,7 @@ def open3d_cleanup(mesh_path: Path, out_path: Path, dry: bool) -> None:
         mesh.remove_duplicated_triangles()
         mesh.remove_degenerate_triangles()
         mesh.remove_non_manifold_edges()
-        mesh, _ = mesh.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0) if hasattr(mesh, "remove_statistical_outlier") else (mesh, None)
-        # Simpler: cluster connected triangles and keep largest
+        # Keep largest connected component
         try:
             triangle_clusters, cluster_n_triangles, _ = mesh.cluster_connected_triangles()
             import numpy as np
